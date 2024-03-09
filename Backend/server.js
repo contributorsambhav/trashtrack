@@ -22,6 +22,8 @@ app.get('/api', (req, res) => {
 
 
 
+
+
 // Define User schema and model
 const userSchema = new mongoose.Schema({
     name: String,
@@ -61,4 +63,38 @@ app.post('/backsignup', async (req, res) => {
         console.error("Error saving user:", error);
         res.status(500).json({ error: 'Internal server error' });
     }
+});
+
+
+
+// Define API endpoint for login
+app.post('/backlogin', async (req, res) => {
+    const { email, password } = req.body;
+
+    // Connect to MongoDB
+    await connectToDatabase();
+
+    try {
+        // Check if a user with the provided email and password exists in the database
+        const user = await User.findOne({ email, password });
+
+        if (user) {
+            // If the user exists, you can set a session token or return a success message
+            res.json({ message: 'Login successful', user });
+            console.log(`${user.name} logged in successfully.`);
+        } else {
+            // If the user does not exist or the password is incorrect, return an error message
+            res.status(401).json({ error: 'Invalid email or password' });
+            console.log('Invalid email or password.');
+        }
+    } catch (error) {
+        console.error("Error logging in user:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
+const port = process.env.PORT || 5000;
+app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
 });
