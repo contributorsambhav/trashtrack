@@ -5,6 +5,37 @@ const mongoose = require('mongoose');
 const multer = require('multer');
 const path = require("path")
 
+const fs = require('fs');
+const { exec } = require('child_process');
+
+const directoryToWatch = './uploads'; // Change this to the directory you want to watch
+const pythonScript = 'garbage.py'; // Change this to the name of your Python script
+
+// Function to watch for changes in the directory
+const watchDirectory = (directoryPath) => {
+    fs.watch(directoryPath, { recursive: true }, (eventType, filename) => {
+        console.log(`Event type: ${eventType}`);
+        if (filename) {
+            console.log(`File affected: ${filename}`);
+            // Execute Python script when a change occurs using Python 3
+            exec(`python3 ${pythonScript}`, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Error executing Python script: ${error}`);
+                    return;
+                }
+                console.log(`Python script output: ${stdout}`);
+            });
+        } else {
+            console.log('No filename provided');
+        }
+    });
+
+    console.log(`Watching directory: ${directoryPath}`);
+};
+
+// Call the function to watch the directory
+watchDirectory(directoryToWatch);
+
 
 // Parse JSON request bodies
 app.use(express.json());
@@ -13,14 +44,6 @@ app.use(cors({
     methods: ['GET', 'POST'],
     allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-
-
-//To check connection status
-app.get('/api', (req, res) => {
-    res.json({ message: 'Welcome to the API!' });
-});
-
-
 
 
 
@@ -35,14 +58,19 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+// Define Contact schema and model
 const contactSchema = new mongoose.Schema({
     name: String,
     email: String,
     message: String
 });
 
+const Contact = mongoose.model('Contact', contactSchema);
 
-
+// To check connection status
+app.get('/api', (req, res) => {
+    res.json({ message: 'Welcome to the API!' });
+});
 
 // Define API endpoint for sign up
 app.post('/backsignup', async (req, res) => {
@@ -71,8 +99,6 @@ app.post('/backsignup', async (req, res) => {
     }
 });
 
-
-
 // Define API endpoint for login
 app.post('/backlogin', async (req, res) => {
     const { email, password } = req.body;
@@ -99,7 +125,7 @@ app.post('/backlogin', async (req, res) => {
     }
 });
 
-
+// Define API endpoint for handling contact form submissions
 app.post('/contact', async (req, res) => {
     const { name, email, message } = req.body;
 
@@ -123,6 +149,48 @@ app.post('/contact', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+
+
+// Set up multer storage configuration
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/'); // Specify the directory where uploaded files will be stored
+    },
+    filename: function (req, file, cb) {
+        // Use the original file name with a timestamp to avoid naming conflicts
+        cb(null, Date.now() + '-' + file.originalname);
+    }
+});
+
+// Initialize multer upload middleware
+const upload = multer({ storage: storage });
+
+// Handle POST requests to /upload endpoint
+app.post('/upload', upload.single('image'), (req, res) => {
+    try {
+        // Access the uploaded file using req.file
+        const file = req.file;
+        if (!file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+        // You can access other form fields as well, such as req.body.description
+        const description = req.description
+        const location = req.location
+        console.log(description,location)
+        // Respond with a success message
+        return res.status(200).json({ message: 'File uploaded successfully' });
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        return res.status(500).json({ message: 'Error uploading file. Please try again later.' });
+    }
+});
+
+
+// Serve uploaded files statically
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
