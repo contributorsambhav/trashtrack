@@ -35,6 +35,12 @@ const userSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 
+const contactSchema = new mongoose.Schema({
+    name: String,
+    email: String,
+    message: String
+});
+
 
 
 
@@ -93,6 +99,30 @@ app.post('/backlogin', async (req, res) => {
     }
 });
 
+
+app.post('/contact', async (req, res) => {
+    const { name, email, message } = req.body;
+
+    // Connect to MongoDB
+    await connectToDatabase();
+
+    // Create a new contact instance
+    const newContact = new Contact({
+        name,
+        email,
+        message
+    });
+
+    // Save the contact form submission to the database
+    try {
+        await newContact.save();
+        res.json({ message: 'Contact form submitted successfully' });
+        console.log("Contact form submission saved:", newContact);
+    } catch (error) {
+        console.error("Error saving contact form submission:", error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
 
 const port = process.env.PORT || 5000;
 app.listen(port, () => {
